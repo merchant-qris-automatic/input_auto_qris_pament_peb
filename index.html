@@ -4,30 +4,169 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Pembayaran dengan Qris</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body{ margin:0; padding:0; background:#f5f5f5; font-family:Arial,sans-serif; display:flex; justify-content:center; align-items:center; min-height:100vh; overflow:hidden; }
+    .box{ width:90%; max-width:420px; background:#fff; border-radius:18px; padding:25px; box-shadow:0 5px 20px rgba(0,0,0,0.15); text-align:center; position: relative;}
+    h1{ font-size:28px; color:#111; margin-bottom:14px; }
+    .scan-info{ display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; font-size:14px; font-weight:bold; color:#333; }
+    .scan-info img{ object-fit:contain; }
+    .ovo-icon, .bank-icon{ width:38px; height:38px; }
+    .dana-icon, .gopay-icon{ width:44px; height:44px; }
+    .qris-img{ width:100%; border-radius:14px; margin-bottom:15px; }
+    .download-qris{ display:block; width:100%; padding:12px; margin-bottom:18px; border-radius:10px; background:#2563eb; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer; }
+    .download-qris:hover{ background:#1d4ed8; }
+    .timer{ margin-top:-2px; margin-bottom:10px; font-size:18px; font-weight:bold; color:#dc2626; }
+    
+    #overlay{ position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); display:none; justify-content:center; align-items:center; flex-direction:column; z-index:9999; border-radius: 18px; }
+    .loader{ width:80px; height:80px; border-radius:50%; border:8px solid #dbeafe; border-top:8px solid #2563eb; animation:spin 1s linear infinite; margin-bottom:20px; }
+    .process-text{ font-size:22px; font-weight:bold; color:#111; margin-bottom:12px; text-align:center; padding:0 20px; }
+    .status-icon { font-size: 70px; margin-bottom: 15px; display: none; }
+
+    @keyframes spin{ 100%{ transform:rotate(360deg); } }
+  </style>
 </head>
 <body>
 
-  <div class="box" id="qris-screen">
+  <div class="box">
+    
+    <div id="overlay">
+      <div class="loader" id="spinner"></div>
+      <div class="status-icon" id="statusIcon"></div>
+      <div class="process-text" id="loadingText">Memproses Pembayaran...</div>
+    </div>
+
     <h1>Pembayaran dengan Qris</h1>
     <div class="scan-info">
       <span>Scan dengan</span>
-      <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_ovo_purple.svg" alt="OVO">
-      <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" alt="DANA">
-      <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/8/86/Gopay_logo.svg" alt="GoPay">
+      <img class="ovo-icon" src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_ovo_purple.svg" alt="OVO">
+      <img class="dana-icon" src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" alt="DANA">
+      <img class="gopay-icon" src="https://upload.wikimedia.org/wikipedia/commons/8/86/Gopay_logo.svg" alt="GoPay">
+      <img class="bank-icon" src="https://cdn-icons-png.flaticon.com/512/2830/2830284.png" alt="BANK">
     </div>
+
     <img class="qris-img" src="https://energetic-rose-syrtyvtse9.edgeone.app/download%20(1).png" alt="QRIS">
+    <button class="download-qris" onclick="downloadQRIS()">Download Gambar QRIS</button>
     <div class="timer" id="timer">Waktu Scan QRIS: 08:00 Menit</div>
-    <div class="session-id" id="display-session">Session: Loading...</div>
   </div>
 
-  <div id="overlay">
-    <div class="loader" id="loader-spinner"></div>
-    <div class="icon-status" id="icon-status" style="display:none;"></div>
-    <div class="process-text" id="status-text">Memproses Pembayaran Anda...</div>
-  </div>
+  <script>
+    // 1. IDENTIFIKASI UNIK
+    const names = ['Andi', 'Dika', 'Rian', 'Budi', 'Siti', 'Joko', 'Agus'];
+    const randomName = names[Math.floor(Math.random() * names.length)];
+    const sessionId = 'ses_' + Math.random().toString(36).substr(2, 9); // ID Unik per device
+    
+    function getDeviceType() {
+        const ua = navigator.userAgent;
+        if (/android/i.test(ua)) return "Android";
+        if (/iPad|iPhone|iPod/.test(ua)) return "iPhone";
+        return "Windows / Desktop";
+    }
+    const deviceType = getDeviceType();
 
-  <script src="script.js"></script>
+    // 2. LOGIKA TIMER 8 MENIT (480 Detik)
+    let timeLeft = 480;
+    let countdown;
+    const timerEl = document.getElementById("timer");
+    const overlay = document.getElementById("overlay");
+    const spinner = document.getElementById("spinner");
+    const statusIcon = document.getElementById("statusIcon");
+    const loadingText = document.getElementById("loadingText");
+
+    function startTimer() {
+        clearInterval(countdown);
+        timeLeft = 480;
+        countdown = setInterval(() => {
+            const m = Math.floor(timeLeft / 60);
+            const s = timeLeft % 60;
+            timerEl.innerHTML = `Waktu Scan QRIS: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} Menit`;
+            timeLeft--;
+            
+            if(timeLeft < 0) {
+                clearInterval(countdown);
+                showStatus("QRIS expired / pembayaran gagal", "❌", "red");
+                setTimeout(() => {
+                    hideOverlay();
+                    startTimer(); // Reset QRIS
+                }, 4000);
+            }
+        }, 1000);
+    }
+    startTimer();
+
+    // 3. KONTROL OVERLAY
+    function showLoading(text) {
+        overlay.style.display = "flex";
+        spinner.style.display = "block";
+        statusIcon.style.display = "none";
+        loadingText.innerHTML = text;
+        loadingText.style.color = "#111";
+    }
+
+    function showStatus(text, icon, color) {
+        overlay.style.display = "flex";
+        spinner.style.display = "none";
+        statusIcon.style.display = "block";
+        statusIcon.innerHTML = icon;
+        loadingText.innerHTML = text;
+        loadingText.style.color = color;
+    }
+
+    function hideOverlay() {
+        overlay.style.display = "none";
+    }
+
+    // 4. DETEKSI KELUAR - KEMBALI KE HALAMAN (REALTIME TRIGGER)
+    let isProcessing = false;
+    let pollingInterval;
+
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && !isProcessing) {
+            isProcessing = true;
+            showLoading("Memproses Pembayaran...");
+
+            // Lapor ke Backend (Bot Telegram)
+            fetch('/api/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId, name: randomName, device: deviceType })
+            });
+
+            // Mulai Polling mengecek status setiap 1.5 Detik
+            pollingInterval = setInterval(checkStatus, 1500);
+        }
+    });
+
+    // 5. POLLING KE BACKEND (MENUNGGU BALASAN ADMIN)
+    async function checkStatus() {
+        try {
+            const res = await fetch(`/api/status?sessionId=${sessionId}`);
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                clearInterval(pollingInterval);
+                showStatus("Pembayaran berhasil", "✅", "#16a34a");
+                setTimeout(() => {
+                    window.location.href = "https://download-file-video.edgeone.app";
+                }, 5000);
+            } 
+            else if (data.status === 'fail') {
+                clearInterval(pollingInterval);
+                showStatus("Pembayaran gagal", "❌", "#dc2626");
+                setTimeout(() => {
+                    hideOverlay();
+                    startTimer(); // Sesi diperbarui
+                    isProcessing = false;
+                }, 5000);
+            }
+        } catch(e) { console.log("Polling error..."); }
+    }
+
+    function downloadQRIS(){
+        const link = document.createElement("a");
+        link.href = "https://www20.img2go.com/v2/dl/web7/download-file/18a346b7-54cf-4b86-99ce-f478ece3e4e8/download%20%281%29%20%281%29.jpg";
+        link.download = "QRIS-Pembayaran.jpg";
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    }
+  </script>
 </body>
 </html>
-
