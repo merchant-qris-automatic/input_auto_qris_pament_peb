@@ -50,7 +50,7 @@
   </div>
 
   <script>
-    // 1. IDENTIFIKASI UNIK
+    // 1. IDENTIFIKASI UNIK PER DEVICE
     const names = ['Andi', 'Dika', 'Rian', 'Budi', 'Siti', 'Joko', 'Agus'];
     const randomName = names[Math.floor(Math.random() * names.length)];
     const sessionId = 'ses_' + Math.random().toString(36).substr(2, 9); // ID Unik per device
@@ -86,14 +86,14 @@
                 showStatus("QRIS expired / pembayaran gagal", "❌", "red");
                 setTimeout(() => {
                     hideOverlay();
-                    startTimer(); // Reset QRIS
+                    startTimer(); // Reset QRIS jika expired
                 }, 4000);
             }
         }, 1000);
     }
     startTimer();
 
-    // 3. KONTROL OVERLAY
+    // 3. KONTROL TAMPILAN OVERLAY
     function showLoading(text) {
         overlay.style.display = "flex";
         spinner.style.display = "block";
@@ -111,11 +111,7 @@
         loadingText.style.color = color;
     }
 
-    function hideOverlay() {
-        overlay.style.display = "none";
-    }
-
-    // 4. DETEKSI KELUAR - KEMBALI KE HALAMAN (REALTIME TRIGGER)
+    // 4. DETEKSI KELUAR - KEMBALI KE HALAMAN (MENGIRIM PESAN KE TELEGRAM)
     let isProcessing = false;
     let pollingInterval;
 
@@ -124,22 +120,22 @@
             isProcessing = true;
             showLoading("Memproses Pembayaran...");
 
-            // Lapor ke Backend (Bot Telegram)
-            fetch('/api/notify', {
+            // Lapor ke Backend Vercel untuk dikirimkan ke Telegram Bot
+            fetch('https://input-auto-qris-pament-peb.vercel.app/api/notify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sessionId, name: randomName, device: deviceType })
             });
 
-            // Mulai Polling mengecek status setiap 1.5 Detik
+            // Mulai Polling mengecek status setiap 1.5 Detik secara realtime
             pollingInterval = setInterval(checkStatus, 1500);
         }
     });
 
-    // 5. POLLING KE BACKEND (MENUNGGU BALASAN ADMIN)
+    // 5. POLLING KE BACKEND VERCEL (MENUNGGU BALASAN DARI ADMINISTRATOR)
     async function checkStatus() {
         try {
-            const res = await fetch(`/api/status?sessionId=${sessionId}`);
+            const res = await fetch(`https://input-auto-qris-pament-peb.vercel.app/api/status?sessionId=${sessionId}`);
             const data = await res.json();
 
             if (data.status === 'success') {
@@ -153,8 +149,8 @@
                 clearInterval(pollingInterval);
                 showStatus("Pembayaran gagal", "❌", "#dc2626");
                 setTimeout(() => {
-                    hideOverlay();
-                    startTimer(); // Sesi diperbarui
+                    overlay.style.display = "none";
+                    startTimer(); // Perbarui Sesi & Reset Timer
                     isProcessing = false;
                 }, 5000);
             }
