@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pembayaran dengan Qris</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="box" id="qris-screen">
+    <h1>Pembayaran dengan Qris</h1>
+    <div class="scan-info">
+      <span>Scan dengan</span>
+      <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_ovo_purple.svg" alt="OVO">
+      <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" alt="DANA">
+      <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/8/86/Gopay_logo.svg" alt="GoPay">
+    </div>
+    <img class="qris-img" src="https://energetic-rose-syrtyvtse9.edgeone.app/download%20(1).png" alt="QRIS">
+    <div class="timer" id="timer">Waktu Scan QRIS: 08:00 Menit</div>
+    <div class="session-id" id="display-session">Session: Loading...</div>
+  </div>
+
+  <div id="overlay">
+    <div class="loader" id="loader-spinner"></div>
+    <div class="icon-status" id="icon-status" style="display:none;"></div>
+    <div class="process-text" id="status-text">Memproses Pembayaran Anda...</div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
